@@ -1,0 +1,53 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\WAVE\\source\\repos\\InvestAI\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{AB366F7D-88CF-402D-BF12-078791144B64}|InvestAI\\InvestAI.csproj|c:\\users\\wave\\source\\repos\\investai\\investai\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{AB366F7D-88CF-402D-BF12-078791144B64}|InvestAI\\InvestAI.csproj|solutionrelative:investai\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": ".gitignore",
+              "DocumentMoniker": "C:\\Users\\WAVE\\source\\repos\\InvestAI\\InvestAI\\.gitignore",
+              "RelativeDocumentMoniker": "InvestAI\\.gitignore",
+              "ToolTip": "C:\\Users\\WAVE\\source\\repos\\InvestAI\\InvestAI\\.gitignore",
+              "RelativeToolTip": "InvestAI\\.gitignore",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKgBAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-04-26T17:36:51.734Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
