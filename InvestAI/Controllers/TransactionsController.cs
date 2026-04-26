@@ -1,11 +1,12 @@
-﻿using InvestAI.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using System.Security.Claims;
 
+[ApiController]
+[Route("api/v1/assets/{assetId}/transactions")]
 [Authorize]
-public class TransactionsController : Controller
+public class TransactionsController : ControllerBase
 {
     private readonly IMongoCollection<Transaction> _transactions;
     private readonly IMongoCollection<Asset> _assets;
@@ -16,76 +17,95 @@ public class TransactionsController : Controller
         _assets = db.GetCollection<Asset>("Assets");
     }
 
-    private string GetUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    // POST /Transactions/Create
-    [HttpPost]
-    public async Task<IActionResult> Create(
-        string assetId, string type,
-        double quantity, double price, DateTime date)
+    // GET /api/v1/assets/{assetId}/transactions
+    [HttpGet]
+    public async Task<IActionResult> GetAll(string assetId)
     {
-        var userId = GetUserId();
         var asset = await _assets
-            .Find(a => a.Id == assetId && a.UserId == userId)
+            .Find(a => a.Id == assetId && a.UserId == UserId)
             .FirstOrDefaultAsync();
 
-        if (asset == null) return NotFound();
+        if (asset == null)
+            return NotFound(new { error = "Актив не найден" });
 
-        var tx = new Transaction
-        {
-            AssetId = assetId,
-            PortfolioId = asset.PortfolioId,
-            UserId = userId,
-            Type = type,
-            Quantity = quantity,
-            Price = price,
-            TotalAmount = price * quantity,
-            Currency = asset.Currency,
-            Date = date,
-            CreatedAt = DateTime.UtcNow
-        };
-        await _transactions.InsertOneAsync(tx);
-
-        // Пересчитать среднюю цену если buy или sell
-        if (type == "buy" || type == "sell")
-        {
-            var qty = type == "buy" ? quantity : -quantity;
-            var newTotal = asset.TotalInvested + (price * qty);
-            var newQty = asset.Quantity + qty;
-
-            await _assets.UpdateOneAsync(
-                a => a.Id == assetId,
-                Builders<Asset>.Update
-                    .Set(a => a.AvgBuyPrice, newQty > 0 ? newTotal / newQty : 0)
-                    .Set(a => a.TotalInvested, newTotal)
-                    .Set(a => a.Quantity, newQty)
-                    .Set(a => a.UpdatedAt, DateTime.UtcNow));
-        }
-
-        return RedirectToAction("Dashboard", "Portfolio");
-    }
-
-    // GET /Transactions/History/{assetId}
-    public async Task<IActionResult> History(string assetId)
-    {
-        var userId = GetUserId();
-        var txs = await _transactions
-            .Find(t => t.AssetId == assetId && t.UserId == userId)
+        var transactions = await _transactions
+            .Find(t => t.AssetId == assetId)
             .SortByDescending(t => t.Date)
             .ToListAsync();
 
-        return View(txs);
+        return Ok(transactions);
     }
 
-    // POST /Transactions/Delete/{id}
+    // POST /api/v1/assets/{assetId}/transactions
     [HttpPost]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Create(string assetId, [FromBody] CreateTransactionDto dto)
     {
-        var userId = GetUserId();
-        await _transactions.DeleteOneAsync(
-            t => t.Id == id && t.UserId == userId);
+        var asset = await _assets
+            .Find(a => a.Id == assetId && a.UserId == UserId)
+            .FirstOrDefaultAsync();
 
-        return RedirectToAction("Dashboard", "Portfolio");
+        if (asset == null)
+            return NotFound(new { error = "Актив не найден" });
+
+        var transaction = new Transaction
+        {
+            AssetId = assetId,
+            PortfolioId = asset.PortfolioId,
+            UserId = UserId,
+            Type = dto.Type,
+            Quantity = dto.Quantity,
+            Price = dto.Price,
+            TotalAmount = Math.Round(dto.Price * dto.Quantity, 2),
+            Currency = asset.Currency,
+            Date = dto.Date,
+            Notes = dto.Notes,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _transactions.InsertOneAsync(transaction);
+
+        // Пересчитываем среднюю цену покупки если это buy
+        if (dto.Type == "buy")
+            await RecalculateAvgPrice(asset, dto.Quantity, dto.Price);
+
+        return StatusCode(201, transaction);
     }
+
+    // DELETE /api/v1/assets/{assetId}/transactions/{txId}
+    [HttpDelete("{txId}")]
+    public async Task<IActionResult> Delete(string assetId, string txId)
+    {
+        var result = await _transactions.DeleteOneAsync(
+            t => t.Id == txId && t.AssetId == assetId && t.UserId == UserId);
+
+        if (result.DeletedCount == 0)
+            return NotFound(new { error = "Транзакция не найдена" });
+
+        return Ok(new { message = "Транзакция удалена" });
+    }
+
+    private async Task RecalculateAvgPrice(Asset asset, double newQty, double newPrice)
+    {
+        var newTotalQty = asset.Quantity + newQty;
+        var newAvgPrice = ((asset.AvgBuyPrice * asset.Quantity) + (newPrice * newQty)) / newTotalQty;
+
+        var update = Builders<Asset>.Update
+            .Set(a => a.Quantity, newTotalQty)
+            .Set(a => a.AvgBuyPrice, Math.Round(newAvgPrice, 4))
+            .Set(a => a.TotalInvested, Math.Round(newAvgPrice * newTotalQty, 2))
+            .Set(a => a.UpdatedAt, DateTime.UtcNow);
+
+        await _assets.UpdateOneAsync(a => a.Id == asset.Id, update);
+    }
+}
+
+public class CreateTransactionDto
+{
+    public string Type { get; set; }      // "buy" | "sell" | "dividend" | "coupon"
+    public double Quantity { get; set; }
+    public double Price { get; set; }
+    public DateTime Date { get; set; }
+    public string? Notes { get; set; }
 }
