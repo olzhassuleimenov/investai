@@ -1,27 +1,40 @@
+using InvestAI.Services;
+using MongoDB.Driver;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// MongoDB
+var mongoClient = new MongoClient(
+    builder.Configuration["MongoDB:ConnectionString"]);
+var database = mongoClient.GetDatabase(
+    builder.Configuration["MongoDB:DatabaseName"]);
+builder.Services.AddSingleton<IMongoDatabase>(database);
+
+// Cookie авторизация
+builder.Services.AddAuthentication("Cookies")
+    .AddCookie("Cookies", options => {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+    });
+builder.Services.AddAuthorization();
+
+// Services
+builder.Services.AddSingleton<QuotesService>();
+builder.Services.AddHttpClient<GeminiService>();
+builder.Services.AddScoped<GeminiService>();
+builder.Services.AddScoped<FileParserService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Auth}/{action=Login}/{id?}");
 
 app.Run();
