@@ -1,5 +1,4 @@
-﻿using InvestAI.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using System.Security.Claims;
@@ -26,6 +25,17 @@ public class ChatController : Controller
     private string GetUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
+    // GET /Chat/List
+    public async Task<IActionResult> List()
+    {
+        var userId = GetUserId();
+        var chats = await _chats
+            .Find(c => c.UserId == userId)
+            .SortByDescending(c => c.UpdatedAt)
+            .ToListAsync();
+        return Json(chats);
+    }
+
     // POST /Chat/Create
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateChatRequest req)
@@ -34,6 +44,9 @@ public class ChatController : Controller
         var portfolio = await _portfolios
             .Find(p => p.UserId == userId)
             .FirstOrDefaultAsync();
+
+        if (portfolio == null)
+            return Json(new { error = "Портфель не найден" });
 
         var chat = new Chat
         {
@@ -45,13 +58,20 @@ public class ChatController : Controller
             UpdatedAt = DateTime.UtcNow
         };
         await _chats.InsertOneAsync(chat);
-
         return Json(new { id = chat.Id, title = chat.Title });
     }
 
     // GET /Chat/Messages/{chatId}
     public async Task<IActionResult> Messages(string chatId)
     {
+        var userId = GetUserId();
+        var chat = await _chats
+            .Find(c => c.Id == chatId && c.UserId == userId)
+            .FirstOrDefaultAsync();
+
+        if (chat == null)
+            return Json(new { error = "Чат не найден" });
+
         var msgs = await _messages
             .Find(m => m.ChatId == chatId)
             .SortBy(m => m.CreatedAt)
@@ -66,7 +86,13 @@ public class ChatController : Controller
     {
         var userId = GetUserId();
 
-        // 1. Сохранить сообщение пользователя
+        var chat = await _chats
+            .Find(c => c.Id == req.ChatId && c.UserId == userId)
+            .FirstOrDefaultAsync();
+
+        if (chat == null)
+            return Json(new { error = "Чат не найден" });
+
         var userMsg = new Message
         {
             ChatId = req.ChatId,
@@ -78,12 +104,7 @@ public class ChatController : Controller
         };
         await _messages.InsertOneAsync(userMsg);
 
-        // 2. Загрузить активы портфеля
-        var assets = await _assets
-            .Find(a => a.UserId == userId)
-            .ToListAsync();
-
-        // 3. Собрать промпт
+        var assets = await _assets.Find(a => a.UserId == userId).ToListAsync();
         var portfolioJson = JsonSerializer.Serialize(assets);
         var prompt = $"""
             Ты — финансовый ИИ-ассистент для частных инвесторов. Отвечай только на русском.
@@ -97,18 +118,10 @@ public class ChatController : Controller
             {req.Text}
             """;
 
-        // 4. Вызвать Gemini
         string aiText;
-        try
-        {
-            aiText = await _gemini.AskAsync(prompt);
-        }
-        catch (Exception ex)
-        {
-            aiText = ex.Message;
-        }
+        try { aiText = await _gemini.AskAsync(prompt); }
+        catch (Exception ex) { aiText = ex.Message; }
 
-        // 5. Сохранить ответ ИИ
         var aiMsg = new Message
         {
             ChatId = req.ChatId,
@@ -120,7 +133,6 @@ public class ChatController : Controller
         };
         await _messages.InsertOneAsync(aiMsg);
 
-        // 6. Обновить счётчик чата
         await _chats.UpdateOneAsync(
             c => c.Id == req.ChatId,
             Builders<Chat>.Update
@@ -134,19 +146,17 @@ public class ChatController : Controller
     [HttpPost]
     public async Task<IActionResult> Delete(string chatId)
     {
-        await _chats.DeleteOneAsync(c => c.Id == chatId);
+        var userId = GetUserId();
+        var result = await _chats.DeleteOneAsync(
+            c => c.Id == chatId && c.UserId == userId);
+
+        if (result.DeletedCount == 0)
+            return Json(new { error = "Чат не найден" });
+
         await _messages.DeleteManyAsync(m => m.ChatId == chatId);
         return Json(new { success = true });
     }
 }
 
-public class CreateChatRequest
-{
-    public string Title { get; set; }
-}
-
-public class SendMessageRequest
-{
-    public string ChatId { get; set; }
-    public string Text { get; set; }
-}
+public class CreateChatRequest { public string Title { get; set; } }
+public class SendMessageRequest { public string ChatId { get; set; } public string Text { get; set; } }

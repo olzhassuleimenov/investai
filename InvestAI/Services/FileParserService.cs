@@ -23,7 +23,7 @@ public class FileParserService
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             HasHeaderRecord = true,
-            MissingFieldFound = null,
+            MissingFieldFound = null
         };
 
         using var reader = new StreamReader(stream);
@@ -43,12 +43,9 @@ public class FileParserService
                 var price = csv.GetField("avg_buy_price");
                 var type = csv.GetField("type");
 
-                if (string.IsNullOrEmpty(ticker))
-                    throw new Exception("ticker missing");
-                if (string.IsNullOrEmpty(qty))
-                    throw new Exception("quantity missing");
-                if (string.IsNullOrEmpty(price))
-                    throw new Exception("avg_buy_price missing");
+                if (string.IsNullOrEmpty(ticker)) throw new Exception("ticker missing");
+                if (string.IsNullOrEmpty(qty)) throw new Exception("quantity missing");
+                if (string.IsNullOrEmpty(price)) throw new Exception("avg_buy_price missing");
                 if (type != "stock" && type != "bond")
                     throw new Exception($"invalid type: {type}");
 
@@ -65,7 +62,6 @@ public class FileParserService
     public ImportResult ParseXlsx(Stream stream)
     {
         var result = new ImportResult();
-
         using var wb = new XLWorkbook(stream);
         var ws = wb.Worksheet(1);
         var rows = ws.RangeUsed().RowsUsed().Skip(1).ToList();
@@ -81,12 +77,9 @@ public class FileParserService
                 var price = r.Cell(3).GetString();
                 var type = r.Cell(4).GetString();
 
-                if (string.IsNullOrEmpty(ticker))
-                    throw new Exception("ticker missing");
-                if (string.IsNullOrEmpty(qty))
-                    throw new Exception("quantity missing");
-                if (string.IsNullOrEmpty(price))
-                    throw new Exception("avg_buy_price missing");
+                if (string.IsNullOrEmpty(ticker)) throw new Exception("ticker missing");
+                if (string.IsNullOrEmpty(qty)) throw new Exception("quantity missing");
+                if (string.IsNullOrEmpty(price)) throw new Exception("avg_buy_price missing");
                 if (type != "stock" && type != "bond")
                     throw new Exception($"invalid type: {type}");
 

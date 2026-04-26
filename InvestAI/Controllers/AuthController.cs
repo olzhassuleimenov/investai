@@ -1,95 +1,100 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
-[ApiController]
-[Route("api/v1/auth")]
-public class AuthController : ControllerBase
+public class AuthController : Controller
 {
     private readonly IMongoCollection<User> _users;
-    private readonly IConfiguration _config;
+    private readonly IMongoCollection<Portfolio> _portfolios;
 
-    public AuthController(IMongoDatabase db, IConfiguration config)
+    public AuthController(IMongoDatabase db)
     {
         _users = db.GetCollection<User>("Users");
-        _config = config;
+        _portfolios = db.GetCollection<Portfolio>("Portfolios");
     }
 
-    // POST /api/v1/auth/register
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterViewModel model)
+    // GET /Auth/Login
+    public IActionResult Login() => View();
+
+    // POST /Auth/Login
+    [HttpPost]
+    public async Task<IActionResult> Login(LoginViewModel vm)
     {
-        var existing = await _users.Find(u => u.Email == model.Email.ToLower()).FirstOrDefaultAsync();
-        if (existing != null)
-            return BadRequest(new { error = "Пользователь с таким email уже существует" });
+        if (!ModelState.IsValid) return View(vm);
+
+        var user = await _users
+            .Find(u => u.Email == vm.Email.ToLower())
+            .FirstOrDefaultAsync();
+
+        if (user == null || !BCrypt.Net.BCrypt.Verify(vm.Password, user.PasswordHash))
+        {
+            ViewBag.Error = "Неверный email или пароль";
+            return View(vm);
+        }
+
+        await SignInUser(user);
+        return RedirectToAction("Dashboard", "Portfolio");
+    }
+
+    // GET /Auth/Register
+    public IActionResult Register() => View();
+
+    // POST /Auth/Register
+    [HttpPost]
+    public async Task<IActionResult> Register(RegisterViewModel vm)
+    {
+        if (!ModelState.IsValid) return View(vm);
+
+        var exists = await _users
+            .Find(u => u.Email == vm.Email.ToLower())
+            .FirstOrDefaultAsync();
+
+        if (exists != null)
+        {
+            ModelState.AddModelError("", "Email уже занят");
+            return View(vm);
+        }
 
         var user = new User
         {
-            Email = model.Email.ToLower(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-            Name = model.Name,
+            Email = vm.Email.ToLower(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(vm.Password),
+            Name = vm.Name,
             CreatedAt = DateTime.UtcNow
         };
-
         await _users.InsertOneAsync(user);
 
-        var token = GenerateToken(user);
-        return StatusCode(201, new
+        await _portfolios.InsertOneAsync(new Portfolio
         {
-            token,
-            user = new { id = user.Id, email = user.Email, name = user.Name }
+            UserId = user.Id,
+            Name = "Мой портфель",
+            Currency = "USD",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         });
+
+        await SignInUser(user);
+        return RedirectToAction("Dashboard", "Portfolio");
     }
 
-    // POST /api/v1/auth/login
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginViewModel model)
+    // GET /Auth/Logout
+    public async Task<IActionResult> Logout()
     {
-        var user = await _users.Find(u => u.Email == model.Email.ToLower()).FirstOrDefaultAsync();
-        if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
-            return Unauthorized(new { error = "Неверный email или пароль" });
-
-        var token = GenerateToken(user);
-        return Ok(new
-        {
-            token,
-            user = new { id = user.Id, email = user.Email, name = user.Name }
-        });
+        await HttpContext.SignOutAsync("Cookies");
+        return RedirectToAction("Login");
     }
 
-    // GET /api/v1/auth/me
-    [HttpGet("me")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
-    public async Task<IActionResult> Me()
+    private async Task SignInUser(User user)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-        if (user == null) return NotFound(new { error = "Пользователь не найден" });
-
-        return Ok(new { id = user.Id, email = user.Email, name = user.Name });
-    }
-
-    private string GenerateToken(User user)
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Secret"]));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Name)
+            new Claim(ClaimTypes.Name,           user.Name),
+            new Claim(ClaimTypes.Email,          user.Email)
         };
-
-        var token = new JwtSecurityToken(
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(int.Parse(_config["Jwt:ExpiresInDays"])),
-            signingCredentials: creds
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        var identity = new ClaimsIdentity(claims, "Cookies");
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext.SignInAsync("Cookies", principal);
     }
 }

@@ -13,7 +13,7 @@ public class Asset
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; }
 
-    public string Type { get; set; }       // "stock" | "bond"
+    public string Type { get; set; }
     public string Ticker { get; set; }
     public string Name { get; set; }
     public double Quantity { get; set; }
@@ -21,8 +21,8 @@ public class Asset
     public double TotalInvested { get; set; }
     public string Currency { get; set; }
     public DateTime BuyDate { get; set; }
-    public string Sector { get; set; }
-    public string Exchange { get; set; }
+    public string? Sector { get; set; }
+    public string? Exchange { get; set; }
     public string? Notes { get; set; }
 
     // Только для акций

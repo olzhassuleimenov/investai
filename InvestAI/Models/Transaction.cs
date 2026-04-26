@@ -16,7 +16,7 @@ public class Transaction
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; }
 
-    public string Type { get; set; }       // "buy" | "sell" | "dividend" | "coupon"
+    public string Type { get; set; }
     public double Quantity { get; set; }
     public double Price { get; set; }
     public double TotalAmount { get; set; }

@@ -21,17 +21,9 @@ public class GeminiService
         {
             contents = new[]
             {
-                new
-                {
-                    role  = "user",
-                    parts = new[] { new { text = prompt } }
-                }
+                new { role = "user", parts = new[] { new { text = prompt } } }
             },
-            generationConfig = new
-            {
-                temperature = 0.7,
-                maxOutputTokens = 2048
-            }
+            generationConfig = new { temperature = 0.7, maxOutputTokens = 2048 }
         };
 
         var res = await _http.PostAsJsonAsync(url, body);

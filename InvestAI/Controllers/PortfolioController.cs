@@ -1,147 +1,130 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
 
-[ApiController]
-[Route("api/v1/portfolios")]
 [Authorize]
-public class PortfolioController : ControllerBase
+public class PortfolioController : Controller
 {
     private readonly IMongoCollection<Portfolio> _portfolios;
     private readonly IMongoCollection<Asset> _assets;
+    private readonly IMongoCollection<Chat> _chats;
     private readonly QuotesService _quotes;
 
     public PortfolioController(IMongoDatabase db, QuotesService quotes)
     {
         _portfolios = db.GetCollection<Portfolio>("Portfolios");
         _assets = db.GetCollection<Asset>("Assets");
+        _chats = db.GetCollection<Chat>("Chats");
         _quotes = quotes;
     }
 
-    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    private string GetUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    // GET /api/v1/portfolios
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    // GET /Portfolio/Dashboard
+    public async Task<IActionResult> Dashboard()
     {
-        var portfolios = await _portfolios
-            .Find(p => p.UserId == UserId)
-            .ToListAsync();
-
-        return Ok(portfolios);
-    }
-
-    // POST /api/v1/portfolios
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreatePortfolioDto dto)
-    {
-        var portfolio = new Portfolio
-        {
-            UserId = UserId,
-            Name = dto.Name,
-            Currency = dto.Currency,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        await _portfolios.InsertOneAsync(portfolio);
-        return StatusCode(201, portfolio);
-    }
-
-    // GET /api/v1/portfolios/{id}
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
-    {
+        var userId = GetUserId();
         var portfolio = await _portfolios
-            .Find(p => p.Id == id && p.UserId == UserId)
+            .Find(p => p.UserId == userId)
             .FirstOrDefaultAsync();
 
         if (portfolio == null)
-            return NotFound(new { error = "Портфель не найден" });
+            return RedirectToAction("Login", "Auth");
 
         var assets = await _assets
-            .Find(a => a.PortfolioId == id)
+            .Find(a => a.PortfolioId == portfolio.Id)
             .ToListAsync();
 
         var tickers = assets.Select(a => a.Ticker).Distinct();
         var prices = await _quotes.GetPricesAsync(tickers);
 
-        double totalValue = 0;
-        double totalInvested = 0;
-        double annualDividends = 0;
-
-        foreach (var asset in assets)
-        {
-            totalInvested += asset.TotalInvested;
-            if (prices.TryGetValue(asset.Ticker, out var price))
-                totalValue += (double)price * asset.Quantity;
-            else
-                totalValue += asset.TotalInvested;
-
-            if (asset.Type == "stock" && asset.DividendYield.HasValue)
-                annualDividends += asset.TotalInvested * asset.DividendYield.Value / 100;
-        }
-
-        var totalPnl = totalValue - totalInvested;
-        var totalPnlPercent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
-
-        return Ok(new
-        {
-            id = portfolio.Id,
-            name = portfolio.Name,
-            currency = portfolio.Currency,
-            createdAt = portfolio.CreatedAt,
-            summary = new
+        var assetVms = assets.Select(a => {
+            prices.TryGetValue(a.Ticker, out var price);
+            var pnl = ((double)price - a.AvgBuyPrice) * a.Quantity;
+            var pnlPercent = a.AvgBuyPrice > 0
+                ? ((double)price - a.AvgBuyPrice) / a.AvgBuyPrice * 100
+                : 0;
+            return new AssetViewModel
             {
-                totalValue = Math.Round(totalValue, 2),
-                totalInvested = Math.Round(totalInvested, 2),
-                totalPnl = Math.Round(totalPnl, 2),
-                totalPnlPercent = Math.Round(totalPnlPercent, 2),
-                annualDividends = Math.Round(annualDividends, 2),
-                assetCount = assets.Count
-            }
-        });
+                Id = a.Id,
+                PortfolioId = a.PortfolioId,
+                UserId = a.UserId,
+                Type = a.Type,
+                Ticker = a.Ticker,
+                Name = a.Name,
+                Quantity = a.Quantity,
+                AvgBuyPrice = a.AvgBuyPrice,
+                TotalInvested = a.TotalInvested,
+                Currency = a.Currency,
+                BuyDate = a.BuyDate,
+                Sector = a.Sector,
+                DividendYield = a.DividendYield,
+                DividendFreq = a.DividendFreq,
+                NextDividendDate = a.NextDividendDate,
+                CouponRate = a.CouponRate,
+                CouponFreqPerYear = a.CouponFreqPerYear,
+                MaturityDate = a.MaturityDate,
+                FaceValue = a.FaceValue,
+                CurrentPrice = price,
+                Pnl = (decimal)pnl,
+                PnlPercent = (decimal)pnlPercent,
+                TotalValue = price * (decimal)a.Quantity
+            };
+        }).ToList();
+
+        var totalValue = assetVms.Sum(a => a.TotalValue);
+        var totalInvested = (decimal)assetVms.Sum(a => a.TotalInvested);
+        var totalPnl = totalValue - totalInvested;
+        var totalPnlPct = totalInvested > 0 ? totalPnl / totalInvested * 100 : 0;
+        var annualDiv = (decimal)assetVms
+            .Where(a => a.Type == "stock" && a.DividendYield.HasValue)
+            .Sum(a => a.TotalInvested * a.DividendYield!.Value / 100);
+
+        var chats = await _chats
+            .Find(c => c.UserId == userId)
+            .SortByDescending(c => c.UpdatedAt)
+            .ToListAsync();
+
+        var vm = new DashboardViewModel
+        {
+            Portfolio = portfolio,
+            Assets = assetVms,
+            TotalValue = totalValue,
+            TotalInvested = totalInvested,
+            TotalPnl = totalPnl,
+            TotalPnlPercent = totalPnlPct,
+            AnnualDividends = annualDiv,
+            Chats = chats
+        };
+
+        return View(vm);
     }
 
-    // PUT /api/v1/portfolios/{id}
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] CreatePortfolioDto dto)
+    // POST /Portfolio/Create
+    [HttpPost]
+    public async Task<IActionResult> Create(string name, string currency)
     {
-        var update = Builders<Portfolio>.Update
-            .Set(p => p.Name, dto.Name)
-            .Set(p => p.Currency, dto.Currency)
-            .Set(p => p.UpdatedAt, DateTime.UtcNow);
-
-        var result = await _portfolios.UpdateOneAsync(
-            p => p.Id == id && p.UserId == UserId, update);
-
-        if (result.MatchedCount == 0)
-            return NotFound(new { error = "Портфель не найден" });
-
-        return Ok(new { message = "Портфель обновлён" });
+        var userId = GetUserId();
+        await _portfolios.InsertOneAsync(new Portfolio
+        {
+            UserId = userId,
+            Name = name,
+            Currency = currency,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        return RedirectToAction("Dashboard");
     }
 
-    // DELETE /api/v1/portfolios/{id}
-    [HttpDelete("{id}")]
+    // POST /Portfolio/Delete/{id}
+    [HttpPost]
     public async Task<IActionResult> Delete(string id)
     {
-        var result = await _portfolios.DeleteOneAsync(
-            p => p.Id == id && p.UserId == UserId);
-
-        if (result.DeletedCount == 0)
-            return NotFound(new { error = "Портфель не найден" });
-
-        // Удаляем все активы портфеля
+        var userId = GetUserId();
+        await _portfolios.DeleteOneAsync(p => p.Id == id && p.UserId == userId);
         await _assets.DeleteManyAsync(a => a.PortfolioId == id);
-
-        return Ok(new { message = "Портфель удалён" });
+        return RedirectToAction("Dashboard");
     }
-}
-
-public class CreatePortfolioDto
-{
-    public string Name { get; set; }
-    public string Currency { get; set; }
 }
