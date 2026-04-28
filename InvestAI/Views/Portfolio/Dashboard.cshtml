@@ -1,5 +1,129 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model DashboardViewModel
 @{
+    ViewData["Title"] = "Портфель";
+    Layout = "_Layout";
+}
+
+<div class="app">
+
+    <!-- САЙДБАР -->
+    <aside class="sidebar">
+
+        <div class="sidebar-top">
+            <div class="logo">
+                <div class="logo-icon">📈</div>
+                InvestAI
+            </div>
+            <button class="btn-new-chat" onclick="createChat()">
+                <span class="icon">＋</span>
+                Новый чат
+            </button>
+        </div>
+
+        <div class="chats-section" id="chats-section">
+            @if (Model.Chats != null && Model.Chats.Any())
+            {
+                <div class="chats-label">Чаты</div>
+                foreach (var chat in Model.Chats.OrderByDescending(c => c.UpdatedAt))
+                {
+                    <button class="chat-item @(chat.Id.ToString() == Model.ActiveChatId ? "active" : "")"
+                            onclick="loadChat('@chat.Id.ToString()')">
+                        <span class="chat-title">@chat.Title</span>
+                        <span class="chat-date">@chat.UpdatedAt.ToString("dd MMM")</span>
+                    </button>
+                }
+            }
+            else
+            {
+                <div style="padding:12px 10px; font-size:11px; color:var(--color-sidebar-muted); line-height:1.6;">
+                    Создайте первый чат,<br>чтобы начать анализ
+                </div>
+            }
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    @(Model.Portfolio?.Name?.Substring(0, 1).ToUpper() ?? "П")
+                </div>
+                <div class="user-details">
+                    <div class="user-name">@Model.Portfolio?.Name</div>
+                    <div class="user-plan">@Model.Assets?.Count актив(а)</div>
+                </div>
+            </div>
+            <a asp-action="Logout" asp-controller="Auth" class="btn-logout">⎋ Выйти</a>
+        </div>
+
+    </aside>
+
+    <!-- ПАНЕЛЬ ЧАТА -->
+    <section class="chat-panel">
+
+        <div class="chat-topbar">
+            <span class="topbar-menu-btn">☰</span>
+            <span class="chat-topbar-title" id="chat-title">Анализ портфеля</span>
+            @if (Model.Assets != null && Model.Assets.Any())
+            {
+                <span class="assets-badge">@Model.Assets.Count актива</span>
+            }
+        </div>
+
+        <div class="messages-list" id="messages-list">
+            @if (string.IsNullOrEmpty(Model.ActiveChatId))
+            {
+                <div class="chat-empty" id="chat-empty-state">
+                    <div class="chat-empty-icon">💬</div>
+                    <h3>Начните разговор</h3>
+                    <p>Загрузите портфель или задайте вопрос об инвестициях</p>
+                </div>
+            }
+        </div>
+
+        <div class="chat-input-area">
+            <div class="file-preview" id="file-preview" style="display:none">
+                <span>📎</span>
+                <span class="file-preview-name" id="file-preview-name"></span>
+                <span class="file-preview-remove" onclick="removeFile()">✕</span>
+            </div>
+
+            <div class="input-box">
+                <label class="attach-btn" title="Прикрепить файл (CSV / XLSX / PNG)">
+                    📎
+                    <input type="file" id="file-input" accept=".csv,.xlsx,.png,.jpg" hidden onchange="handleFileSelect(this)" />
+                </label>
+                <textarea id="chat-input" placeholder="Спросите про ваш портфель..." rows="1"></textarea>
+                <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Отправить (Enter)">➤</button>
+            </div>
+
+            <p class="input-hint">Enter — отправить · Shift+Enter — перенос строки · CSV / XLSX / PNG</p>
+        </div>
+
+    </section>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ — делает Фронтенд 2 -->
+    <section class="analytics-panel">
+        @await Html.PartialAsync("_Analytics", Model)
+    </section>
+
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ActiveChatId))
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            loadChat('@Model.ActiveChatId');
+        });
+    </script>
+}
+
+@section Scripts {
+    <script>
+        const textarea = document.getElementById('chat-input');
+        if (textarea) {
+            textarea.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        }
+    </script>
 }

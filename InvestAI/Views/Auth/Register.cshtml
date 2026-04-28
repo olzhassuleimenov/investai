@@ -1,5 +1,62 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model RegisterViewModel
 @{
+    ViewData["Title"] = "Регистрация";
+    Layout = "_Layout";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <div class="auth-logo">
+            <div class="auth-logo-icon">📈</div>
+            <span class="auth-logo-text">InvestAI</span>
+        </div>
+
+        <h1 class="auth-heading">Создайте аккаунт</h1>
+        <p class="auth-subtitle">Начните анализировать инвестиции с ИИ</p>
+
+        @if (!string.IsNullOrEmpty(ViewBag.Error))
+        {
+            <div class="error-box">@ViewBag.Error</div>
+        }
+
+        <form method="post" asp-action="Register" asp-controller="Auth" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label class="form-label" asp-for="Name">Имя</label>
+                <input class="form-input" asp-for="Name" type="text" placeholder="Иван Иванов" autocomplete="name" autofocus />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" asp-for="Email">Email</label>
+                <input class="form-input" asp-for="Email" type="email" placeholder="you@example.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" asp-for="Password">Пароль</label>
+                <input class="form-input" asp-for="Password" type="password" placeholder="Минимум 8 символов" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" asp-for="ConfirmPassword">Повторите пароль</label>
+                <input class="form-input" asp-for="ConfirmPassword" type="password" placeholder="Повторите пароль" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="field-error"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Создать аккаунт</button>
+        </form>
+
+        <p class="auth-link">
+            Уже есть аккаунт? <a asp-action="Login" asp-controller="Auth">Войти</a>
+        </p>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }

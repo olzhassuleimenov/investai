@@ -1,5 +1,50 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model LoginViewModel
 @{
+    ViewData["Title"] = "Вход";
+    Layout = "_Layout";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+
+        <div class="auth-logo">
+            <div class="auth-logo-icon">📈</div>
+            <span class="auth-logo-text">InvestAI</span>
+        </div>
+
+        <h1 class="auth-heading">Добро пожаловать</h1>
+        <p class="auth-subtitle">Войдите в свой аккаунт</p>
+
+        @if (!string.IsNullOrEmpty(ViewBag.Error))
+        {
+            <div class="error-box">@ViewBag.Error</div>
+        }
+
+        <form method="post" asp-action="Login" asp-controller="Auth" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label class="form-label" asp-for="Email">Email</label>
+                <input class="form-input" asp-for="Email" type="email" placeholder="you@example.com" autocomplete="email" autofocus />
+                <span asp-validation-for="Email" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" asp-for="Password">Пароль</label>
+                <input class="form-input" asp-for="Password" type="password" placeholder="Минимум 8 символов" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Войти</button>
+        </form>
+
+        <p class="auth-link">
+            Нет аккаунта? <a asp-action="Register" asp-controller="Auth">Зарегистрироваться</a>
+        </p>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }

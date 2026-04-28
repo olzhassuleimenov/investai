@@ -1,2 +1,364 @@
-﻿body {
+﻿/* Главный лейаут */
+.app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
 }
+
+/* Сайдбар */
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--color-sidebar);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-top {
+    padding: 16px 12px 12px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--color-accent);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.btn-new-chat {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    background: rgba(255,255,255,0.06);
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius-md);
+    color: var(--color-sidebar-text);
+    font-size: 12px;
+    font-weight: 500;
+    transition: background var(--transition);
+}
+
+    .btn-new-chat:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+/* Список чатов */
+.chats-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+    .chats-section::-webkit-scrollbar {
+        width: 3px;
+    }
+
+    .chats-section::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 99px;
+    }
+
+.chats-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-sidebar-muted);
+    padding: 4px 6px 6px;
+    font-weight: 500;
+}
+
+.chat-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition);
+    text-align: left;
+}
+
+    .chat-item:hover {
+        background: var(--color-sidebar-hover);
+    }
+
+    .chat-item.active {
+        background: var(--color-sidebar-active);
+    }
+
+.chat-title {
+    font-size: 12px;
+    color: var(--color-sidebar-text);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    max-width: 170px;
+}
+
+.chat-date {
+    font-size: 10px;
+    color: var(--color-sidebar-muted);
+}
+
+/* Footer сайдбара */
+.sidebar-footer {
+    padding: 10px 12px 14px;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    background: var(--color-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-sidebar-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-plan {
+    font-size: 10px;
+    color: var(--color-sidebar-muted);
+}
+
+.btn-logout {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    color: var(--color-sidebar-muted);
+    text-align: left;
+    transition: color var(--transition), background var(--transition);
+    display: block;
+}
+
+    .btn-logout:hover {
+        color: var(--color-sidebar-text);
+        background: rgba(255,255,255,0.05);
+    }
+
+/* Панель чата */
+.chat-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border-right: 0.5px solid var(--color-border-dark);
+}
+
+.chat-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    height: 48px;
+    border-bottom: 0.5px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.topbar-menu-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+    font-size: 16px;
+    transition: background var(--transition);
+}
+
+    .topbar-menu-btn:hover {
+        background: var(--color-bg);
+    }
+
+.chat-topbar-title {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.assets-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    background: var(--color-green-light);
+    color: var(--color-accent);
+    border-radius: 99px;
+}
+
+.messages-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-dark) transparent;
+}
+
+    .messages-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .messages-list::-webkit-scrollbar-thumb {
+        background: var(--color-border-dark);
+        border-radius: 99px;
+    }
+
+.chat-input-area {
+    padding: 10px 14px 14px;
+    border-top: 0.5px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.input-hint {
+    font-size: 10px;
+    color: var(--color-subtle);
+    text-align: center;
+    margin-top: 6px;
+}
+
+/* Правая панель */
+.analytics-panel {
+    width: 460px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    background: var(--color-bg);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-dark) transparent;
+}
+
+    .analytics-panel::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .analytics-panel::-webkit-scrollbar-thumb {
+        background: var(--color-border-dark);
+        border-radius: 99px;
+    }
+
+/* Страница авторизации */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+    padding: 24px;
+    background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--color-surface);
+    border: 0.5px solid var(--color-border-dark);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-md);
+}
+
+.auth-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.auth-logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--color-accent);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.auth-logo-text {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.auth-heading {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+
+.auth-subtitle {
+    font-size: 13px;
+    color: var(--color-muted);
+    margin-bottom: 24px;
+}
+
+.auth-link {
+    font-size: 12px;
+    color: var(--color-muted);
+    text-align: center;
+    margin-top: 20px;
+}
+
+    .auth-link a {
+        color: var(--color-blue);
+        font-weight: 500;
+    }
+
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
